@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Wasla Live — دردشة ومكالمات مباشرة</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo">W</div>
+      <div>
+        <h1>Wasla Live</h1>
+        <span id="connBadge" class="badge badge--idle">غير متصل</span>
+      </div>
+    </div>
+    <button id="langToggle" class="btn btn--ghost" type="button" aria-label="Switch language">EN</button>
+  </header>
+
+  <!-- ── Connection sidebar ─────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <section class="card">
+      <h2 data-i18n="myId">معرّفك</h2>
+      <div class="field">
+        <input id="myIdInput" type="text" readonly aria-label="My peer ID" />
+        <button id="copyIdBtn" class="btn btn--sm" type="button" data-i18n="copy">نسخ</button>
+      </div>
+      <div class="field">
+        <button id="copyLinkBtn" class="btn btn--full" type="button" data-i18n="copyLink">نسخ رابط الدعوة</button>
+      </div>
+      <p class="hint" data-i18n="idHint">
+        شارك هذا المعرّف أو الرابط مع الطرف الآخر. ينتهي المعرّف عند إغلاق التبويب.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="connectTo">الاتصال بشخص</h2>
+      <div class="field">
+        <input id="remoteIdInput" type="text" placeholder="Peer ID" aria-label="Remote peer ID" />
+      </div>
+      <button id="connectBtn" class="btn btn--primary btn--full" type="button" data-i18n="connect">اتصال</button>
+      <button id="disconnectBtn" class="btn btn--danger btn--full" type="button" data-i18n="disconnect" disabled>قطع الاتصال</button>
+      <p id="statusMsg" class="status status--info" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="callPanel">المكالمات</h2>
+      <div class="call-buttons">
+        <button id="audioCallBtn" class="btn btn--primary" type="button" data-i18n="audioCall" disabled>🎙️ مكالمة صوتية</button>
+        <button id="videoCallBtn" class="btn btn--primary" type="button" data-i18n="videoCall" disabled>📹 مكالمة فيديو</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ── Chat main ──────────────────────────────────────── -->
+  <main class="chat">
+    <div id="messages" class="messages" aria-live="polite"></div>
+
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">💬</div>
+      <p data-i18n="emptyChat">ابدأ بالاتصال بشخص لبدء المحادثة</p>
+    </div>
+
+    <form id="composer" class="composer" autocomplete="off">
+      <input id="msgInput" type="text" maxlength="2000" placeholder="اكتب رسالة…" data-i18n-placeholder="typeMsg" aria-label="Message" disabled />
+      <button id="sendBtn" class="btn btn--primary" type="submit" data-i18n="send" disabled>إرسال</button>
+    </form>
+  </main>
+
+</div>
+
+<!-- ── Incoming call modal ─────────────────────────────── -->
+<div id="incomingModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-card">
+    <h3 id="incomingTitle">مكالمة واردة</h3>
+    <p id="incomingFrom"></p>
+    <div class="modal-actions">
+      <button id="acceptCallBtn" class="btn btn--primary" type="button" data-i18n="accept">قبول</button>
+      <button id="rejectCallBtn" class="btn btn--danger" type="button" data-i18n="reject">رفض</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Call overlay ───────────────────────────────────── -->
+<div id="callOverlay" class="call-overlay hidden">
+  <div class="call-stage">
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo" autoplay playsinline muted></video>
+    <div id="audioAvatar" class="audio-avatar hidden">🎙️</div>
+  </div>
+  <div class="call-bar">
+    <span id="callTimer" class="call-timer">00:00</span>
+    <button id="muteBtn" class="btn btn--ghost" type="button">🔇 <span data-i18n="mute">كتم</span></button>
+    <button id="camBtn" class="btn btn--ghost hidden" type="button">📷 <span data-i18n="camOff">إيقاف الكاميرا</span></button>
+    <button id="endCallBtn" class="btn btn--danger" type="button" data-i18n="endCall">إنهاء</button>
+  </div>
+</div>
+
+<!-- ── Toasts ─────────────────────────────────────────── -->
+<div id="toastHost" class="toast-host" aria-live="assertive"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
