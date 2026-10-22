@@ -1,110 +1,876 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="h-full bg-slate-950 text-slate-100">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Wasla Live — دردشة ومكالمات مباشرة</title>
-<link rel="stylesheet" href="style.css" />
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wasla Live PRO - Unified Lounge & Direct Connect</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PeerJS Library for WebRTC -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Inter & Tajawal Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Tajawal', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
+        }
+        /* Video grid responsive layout */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 0.75rem;
+            align-content: flex-start;
+        }
+        .speaking-border {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.8);
+            border-color: #10b981 !important;
+        }
+    </style>
 </head>
-<body>
+<body class="h-full flex flex-col overflow-hidden bg-slate-950 text-slate-100 font-sans transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100 selection:bg-brand-500 selection:text-white">
 
-<div id="app">
+    <!-- TOP NAVBAR -->
+    <header class="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-4 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center space-x-3 space-x-reverse">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                <i class="fa-solid fa-network-wired text-xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-white tracking-wide flex items-center gap-2">
+                    <span id="txt-app-title">وصلة مباشر PRO</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium animate-pulse" id="txt-live-tag">مباشر P2P</span>
+                </h1>
+                <p class="text-xs text-slate-400" id="txt-subtitle">الغرفة العامة والربط المباشر • اتصال بدون سيرفر</p>
+            </div>
+        </div>
 
-  <!-- ── Header ─────────────────────────────────────────── -->
-  <header class="app-header">
-    <div class="brand">
-      <div class="logo">W</div>
-      <div>
-        <h1>Wasla Live</h1>
-        <span id="connBadge" class="badge badge--idle">غير متصل</span>
-      </div>
+        <!-- Connection Status & Quick Controls -->
+        <div class="flex items-center space-x-2 space-x-reverse">
+            <!-- Peer ID Display Badge -->
+            <div onclick="copyMyPeerId()" title="انقر لنسخ المعرّف الخاص بك" class="cursor-pointer hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 hover:bg-slate-700 text-xs transition-all">
+                <i class="fa-solid fa-id-badge text-brand-400"></i>
+                <span id="txt-my-id-label" class="text-slate-400">معرفك:</span>
+                <span id="display-my-id" class="font-mono text-brand-300 font-bold">جاري الإنشاء...</span>
+                <i class="fa-solid fa-copy text-slate-400 text-[10px]"></i>
+            </div>
+
+            <!-- Status Indicator -->
+            <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/50 text-xs">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" id="status-indicator"></span>
+                <span class="text-slate-300 font-medium" id="status-text">جاري الاتصال...</span>
+            </div>
+
+            <!-- Direct Connect Modal Toggle Button -->
+            <button onclick="toggleConnectModal()" class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-xs text-white transition-all flex items-center gap-1.5 shadow-md shadow-brand-500/20 font-medium">
+                <i class="fa-solid fa-plug"></i>
+                <span id="txt-direct-btn">اتصال مباشر</span>
+            </button>
+
+            <!-- Language Switcher -->
+            <button onclick="toggleLanguage()" class="p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 transition-all">
+                <i class="fa-solid fa-language text-brand-400 text-sm"></i>
+            </button>
+
+            <!-- Sidebar Chat Toggle (Mobile) -->
+            <button onclick="toggleChatSidebar()" class="lg:hidden p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-sm relative">
+                <i class="fa-solid fa-comments"></i>
+                <span id="chat-badge" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-900"></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- DIRECT CONNECT & CALL MODAL -->
+    <div id="connect-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 relative">
+            <button onclick="toggleConnectModal()" class="absolute top-4 left-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-600/20 border border-brand-500/30 flex items-center justify-center text-brand-400">
+                    <i class="fa-solid fa-link text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-base text-white" id="txt-modal-title">الاتصال المباشر بمستخدم</h3>
+                    <p class="text-xs text-slate-400" id="txt-modal-desc">أدخل المعرّف الخاص بالطرف الآخر لبدء الاتصال الفوري</p>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1" id="label-peer-id">معرّف المستلم (Peer ID)</label>
+                    <div class="flex gap-2">
+                        <input id="input-target-id" type="text" placeholder="wasla-xxxxxxx" class="flex-1 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-brand-500 font-mono">
+                        <button onclick="connectAndCallPeer()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-medium transition-all shadow-md">
+                            <i class="fa-solid fa-phone-flip ml-1"></i>
+                            <span id="btn-call-target">اتصال</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-800">
+                    <span class="text-xs text-slate-400 block mb-2" id="txt-active-users-title">المستخدمون النشطون في الشبكة:</span>
+                    <div id="active-peers-list" class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                        <div class="text-xs text-slate-500 italic" id="txt-no-peers">لا يوجد مستخدمون آخرون متصلون حالياً</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <button id="langToggle" class="btn btn--ghost" type="button" aria-label="Switch language">EN</button>
-  </header>
 
-  <!-- ── Connection sidebar ─────────────────────────────── -->
-  <aside class="sidebar" id="sidebar">
-    <section class="card">
-      <h2 data-i18n="myId">معرّفك</h2>
-      <div class="field">
-        <input id="myIdInput" type="text" readonly aria-label="My peer ID" />
-        <button id="copyIdBtn" class="btn btn--sm" type="button" data-i18n="copy">نسخ</button>
-      </div>
-      <div class="field">
-        <button id="copyLinkBtn" class="btn btn--full" type="button" data-i18n="copyLink">نسخ رابط الدعوة</button>
-      </div>
-      <p class="hint" data-i18n="idHint">
-        شارك هذا المعرّف أو الرابط مع الطرف الآخر. ينتهي المعرّف عند إغلاق التبويب.
-      </p>
-    </section>
+    <!-- MAIN BODY SECTION -->
+    <main class="flex-1 flex min-h-0 relative">
 
-    <section class="card">
-      <h2 data-i18n="connectTo">الاتصال بشخص</h2>
-      <div class="field">
-        <input id="remoteIdInput" type="text" placeholder="Peer ID" aria-label="Remote peer ID" />
-      </div>
-      <button id="connectBtn" class="btn btn--primary btn--full" type="button" data-i18n="connect">اتصال</button>
-      <button id="disconnectBtn" class="btn btn--danger btn--full" type="button" data-i18n="disconnect" disabled>قطع الاتصال</button>
-      <p id="statusMsg" class="status status--info" role="status" aria-live="polite"></p>
-    </section>
+        <!-- LEFT/MAIN DISPLAY: VIDEO & CALL GRID -->
+        <section class="flex-1 flex flex-col p-3 md:p-4 bg-slate-950/60 relative overflow-hidden">
 
-    <section class="card">
-      <h2 data-i18n="callPanel">المكالمات</h2>
-      <div class="call-buttons">
-        <button id="audioCallBtn" class="btn btn--primary" type="button" data-i18n="audioCall" disabled>🎙️ مكالمة صوتية</button>
-        <button id="videoCallBtn" class="btn btn--primary" type="button" data-i18n="videoCall" disabled>📹 مكالمة فيديو</button>
-      </div>
-    </section>
-  </aside>
+            <!-- Active Video Grid -->
+            <div id="video-grid" class="video-grid flex-1 w-full h-full overflow-y-auto pr-1">
+                <!-- Local User Stream Card -->
+                <div id="local-user-card" class="relative bg-slate-900/90 rounded-2xl overflow-hidden border border-slate-800 shadow-xl flex flex-col items-center justify-center min-h-[220px] transition-all duration-300">
+                    <video id="local-video" autoplay muted playsinline class="w-full h-full object-cover rounded-2xl transform -scale-x-100"></video>
+                    
+                    <div id="local-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-500 hidden">
+                        <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-2xl mb-2 text-slate-400">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <span class="text-xs text-slate-400" id="txt-cam-off">الكاميرا متوقفة</span>
+                    </div>
 
-  <!-- ── Chat main ──────────────────────────────────────── -->
-  <main class="chat">
-    <div id="messages" class="messages" aria-live="polite"></div>
+                    <!-- Local Overlay Badge -->
+                    <div class="absolute bottom-3 right-3 left-3 flex items-center justify-between pointer-events-none z-10">
+                        <span class="bg-slate-950/80 backdrop-blur-md text-slate-200 text-xs px-2.5 py-1 rounded-lg border border-slate-700/50 flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-user-circle text-brand-400"></i>
+                            <span id="txt-you">أنت (المضيف)</span>
+                        </span>
+                        <div class="flex gap-1.5 pointer-events-auto">
+                            <button onclick="switchCameraFacing()" title="تبديل الكاميرا" class="w-7 h-7 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700/60 flex items-center justify-center text-xs hover:bg-slate-700">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                            <span id="icon-mic-status" class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs backdrop-blur-md">
+                                <i class="fa-solid fa-microphone"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-    <div class="empty-state" id="emptyState">
-      <div class="empty-icon">💬</div>
-      <p data-i18n="emptyChat">ابدأ بالاتصال بشخص لبدء المحادثة</p>
-    </div>
+                <!-- Remote Peers Videos Appended Dynamically -->
+            </div>
 
-    <form id="composer" class="composer" autocomplete="off">
-      <input id="msgInput" type="text" maxlength="2000" placeholder="اكتب رسالة…" data-i18n-placeholder="typeMsg" aria-label="Message" disabled />
-      <button id="sendBtn" class="btn btn--primary" type="submit" data-i18n="send" disabled>إرسال</button>
-    </form>
-  </main>
+            <!-- FLOATING IN-CALL OVERLAY CHAT MESSAGES -->
+            <div id="overlay-chat" class="absolute top-6 right-6 z-20 max-w-xs w-full pointer-events-none flex flex-col space-y-2"></div>
 
-</div>
+            <!-- MAIN CALL CONTROL BAR -->
+            <div class="h-20 shrink-0 mt-3 flex items-center justify-center gap-2 md:gap-4 px-3 bg-slate-900/90 backdrop-blur-xl border border-slate-800/80 rounded-2xl shadow-2xl z-20 overflow-x-auto">
+                <!-- Mic Toggle Button -->
+                <button id="btn-toggle-mic" onclick="toggleMic()" class="w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700 shadow-md shrink-0 relative group">
+                    <i class="fa-solid fa-microphone text-lg" id="icon-mic"></i>
+                    <span class="absolute -top-10 scale-0 group-hover:scale-100 transition-all bg-slate-800 text-xs px-2 py-1 rounded text-slate-200 border border-slate-700 whitespace-nowrap pointer-events-none" id="tip-mic">كتم الصوت</span>
+                </button>
 
-<!-- ── Incoming call modal ─────────────────────────────── -->
-<div id="incomingModal" class="modal hidden" role="dialog" aria-modal="true">
-  <div class="modal-card">
-    <h3 id="incomingTitle">مكالمة واردة</h3>
-    <p id="incomingFrom"></p>
-    <div class="modal-actions">
-      <button id="acceptCallBtn" class="btn btn--primary" type="button" data-i18n="accept">قبول</button>
-      <button id="rejectCallBtn" class="btn btn--danger" type="button" data-i18n="reject">رفض</button>
-    </div>
-  </div>
-</div>
+                <!-- Camera Toggle Button -->
+                <button id="btn-toggle-cam" onclick="toggleCamera()" class="w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700 shadow-md shrink-0 relative group">
+                    <i class="fa-solid fa-video text-lg" id="icon-cam"></i>
+                    <span class="absolute -top-10 scale-0 group-hover:scale-100 transition-all bg-slate-800 text-xs px-2 py-1 rounded text-slate-200 border border-slate-700 whitespace-nowrap pointer-events-none" id="tip-cam">إيقاف الكاميرا</span>
+                </button>
 
-<!-- ── Call overlay ───────────────────────────────────── -->
-<div id="callOverlay" class="call-overlay hidden">
-  <div class="call-stage">
-    <video id="remoteVideo" autoplay playsinline></video>
-    <video id="localVideo" autoplay playsinline muted></video>
-    <div id="audioAvatar" class="audio-avatar hidden">🎙️</div>
-  </div>
-  <div class="call-bar">
-    <span id="callTimer" class="call-timer">00:00</span>
-    <button id="muteBtn" class="btn btn--ghost" type="button">🔇 <span data-i18n="mute">كتم</span></button>
-    <button id="camBtn" class="btn btn--ghost hidden" type="button">📷 <span data-i18n="camOff">إيقاف الكاميرا</span></button>
-    <button id="endCallBtn" class="btn btn--danger" type="button" data-i18n="endCall">إنهاء</button>
-  </div>
-</div>
+                <!-- Screen Share Button -->
+                <button id="btn-share-screen" onclick="toggleScreenShare()" class="w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-all border border-slate-700 shadow-md shrink-0 relative group">
+                    <i class="fa-solid fa-desktop text-lg" id="icon-screen"></i>
+                    <span class="absolute -top-10 scale-0 group-hover:scale-100 transition-all bg-slate-800 text-xs px-2 py-1 rounded text-slate-200 border border-slate-700 whitespace-nowrap pointer-events-none" id="tip-screen">مشاركة الشاشة</span>
+                </button>
 
-<!-- ── Toasts ─────────────────────────────────────────── -->
-<div id="toastHost" class="toast-host" aria-live="assertive"></div>
+                <!-- Call All In Room Button -->
+                <button id="btn-call-all" onclick="callAllPeers()" class="px-4 h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 transition-all border border-emerald-500 shadow-lg shadow-emerald-600/20 shrink-0 font-medium text-xs">
+                    <i class="fa-solid fa-phone-volume text-sm"></i>
+                    <span id="txt-call-all">الاتصال بالجميع</span>
+                </button>
 
-<script src="app.js"></script>
+                <!-- Audio Test Sound Bell -->
+                <button onclick="playRingtoneSound()" class="w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center transition-all border border-slate-700 shadow-md shrink-0 relative group">
+                    <i class="fa-solid fa-bell text-lg"></i>
+                    <span class="absolute -top-10 scale-0 group-hover:scale-100 transition-all bg-slate-800 text-xs px-2 py-1 rounded text-slate-200 border border-slate-700 whitespace-nowrap pointer-events-none" id="tip-bell">اختبار الجرس</span>
+                </button>
+
+                <!-- Mesh Reconnect Button -->
+                <button onclick="manualReconnect()" class="w-12 h-12 rounded-xl bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center transition-all border border-brand-500 shadow-lg shadow-brand-500/20 shrink-0 relative group">
+                    <i class="fa-solid fa-arrows-rotate text-lg"></i>
+                    <span class="absolute -top-10 scale-0 group-hover:scale-100 transition-all bg-slate-800 text-xs px-2 py-1 rounded text-slate-200 border border-slate-700 whitespace-nowrap pointer-events-none" id="tip-reconnect">إعادة الاتصال</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- RIGHT SIDEBAR: REAL-TIME TEXT CHAT -->
+        <aside id="chat-sidebar" class="w-full lg:w-80 border-r lg:border-r border-l-0 border-slate-800 bg-slate-900/95 flex flex-col absolute inset-y-0 right-0 z-30 transform translate-x-full lg:translate-x-0 lg:static transition-transform duration-300 backdrop-blur-xl">
+            <!-- Sidebar Header -->
+            <div class="h-14 border-b border-slate-800 px-4 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2 text-slate-200 font-semibold text-sm">
+                    <i class="fa-solid fa-comments text-brand-400"></i>
+                    <span id="txt-chat-header">محادثة الغرفة</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-medium" id="user-count">1 متصل</span>
+                    <button onclick="toggleChatSidebar()" class="lg:hidden p-1 text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Messages Log -->
+            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3">
+                <div class="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-xs text-slate-300 leading-relaxed">
+                    <i class="fa-solid fa-circle-info text-brand-400 ml-1"></i>
+                    <span id="txt-welcome-msg">مرحباً بك! أنت متصل بجميع المتواجدين مباشرة عبر WebRTC.</span>
+                </div>
+            </div>
+
+            <!-- Chat Input Form -->
+            <form id="chat-form" onsubmit="handleSendChat(event)" class="p-3 border-t border-slate-800 flex items-center gap-2 shrink-0 bg-slate-900">
+                <input id="chat-input" type="text" placeholder="اكتب رسالتك..." autocomplete="off" class="flex-1 bg-slate-950 text-slate-100 placeholder-slate-500 text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-brand-500 transition-colors">
+                <button type="submit" class="w-10 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center shrink-0 transition-colors shadow-md shadow-brand-500/20">
+                    <i class="fa-solid fa-paper-plane text-xs transform -rotate-45"></i>
+                </button>
+            </form>
+        </aside>
+
+    </main>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // System Room Global Config
+        const GLOBAL_ROOM_ID = 'wasla-global-public-lounge-v2';
+        
+        // App State
+        let localStream = null;
+        let screenStream = null;
+        let myPeer = null;
+        let myPeerId = null;
+        let isMicMuted = false;
+        let isCamOff = false;
+        let currentFacingMode = 'user'; // 'user' or 'environment'
+        let currentLang = 'ar';
+        
+        // Peer Connections & Stream Stores
+        const activeConnections = {}; // peerId -> DataConnection
+        const activeCalls = {};       // peerId -> MediaConnection
+        const activeRemoteStreams = {}; // peerId -> MediaStream
+
+        // Web Audio Synthesizer
+        let audioCtx = null;
+
+        // UI Translation Dictionary
+        const translations = {
+            ar: {
+                appTitle: 'وصلة مباشر PRO',
+                liveTag: 'مباشر P2P',
+                subtitle: 'الغرفة العامة والربط المباشر • اتصال بدون سيرفر',
+                connecting: 'جاري الاتصال بالشبكة...',
+                connected: 'متصل بالشبكة',
+                reconnecting: 'جاري إعادة الاتصال...',
+                you: 'أنت (المضيف)',
+                camOff: 'الكاميرا متوقفة',
+                chatHeader: 'محادثة الغرفة',
+                welcomeMsg: 'مرحباً بك! أنت متصل بجميع المتواجدين مباشرة عبر WebRTC.',
+                inputPlaceholder: 'اكتب رسالتك...',
+                tipMic: 'كتم/تشغيل الصوت',
+                tipCam: 'إيقاف/تشغيل الكاميرا',
+                tipScreen: 'مشاركة الشاشة',
+                tipBell: 'اختبار الجرس',
+                tipReconnect: 'إعادة الاتصال',
+                callAll: 'الاتصال بالجميع',
+                directBtn: 'اتصال مباشر',
+                modalTitle: 'الاتصال المباشر بمستخدم',
+                modalDesc: 'أدخل المعرّف الخاص بالطرف الآخر لبدء الاتصال الفوري',
+                labelPeerId: 'معرّف المستلم (Peer ID)',
+                callTarget: 'اتصال',
+                activeUsersTitle: 'المستخدمون النشطون في الشبكة:',
+                noPeers: 'لا يوجد مستخدمون آخرون متصلون حالياً',
+                myIdLabel: 'معرفك:'
+            },
+            en: {
+                appTitle: 'Wasla Live PRO',
+                liveTag: 'P2P Live',
+                subtitle: 'Unified Lounge & Direct Connect • WebRTC',
+                connecting: 'Connecting to network...',
+                connected: 'Connected to Network',
+                reconnecting: 'Reconnecting...',
+                you: 'You (Host)',
+                camOff: 'Camera Off',
+                chatHeader: 'Lounge Chat',
+                welcomeMsg: 'Welcome! You are connected live to all users via WebRTC.',
+                inputPlaceholder: 'Type a message...',
+                tipMic: 'Toggle Microphone',
+                tipCam: 'Toggle Camera',
+                tipScreen: 'Share Screen',
+                tipBell: 'Test Sound Bell',
+                tipReconnect: 'Reconnect Mesh',
+                callAll: 'Call All in Room',
+                directBtn: 'Direct Connect',
+                modalTitle: 'Direct Peer Connection',
+                modalDesc: 'Enter target Peer ID to start direct call and chat',
+                labelPeerId: 'Target Peer ID',
+                callTarget: 'Call Peer',
+                activeUsersTitle: 'Active Network Users:',
+                noPeers: 'No other online users available',
+                myIdLabel: 'Your ID:'
+            }
+        };
+
+        // --- 1. INITIALIZATION ---
+        window.onload = async () => {
+            initAudioContext();
+            await setupLocalMedia();
+            initPeerConnection();
+        };
+
+        function initAudioContext() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) audioCtx = new AudioContext();
+        }
+
+        // Web Audio Synthesizer Sounds
+        function playSynthesizedSound(type) {
+            if (!audioCtx) initAudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'ringtone') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(880, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'join') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(329.63, now);
+                osc.frequency.setValueAtTime(493.88, now + 0.1);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'chat') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+        }
+
+        function playRingtoneSound() {
+            playSynthesizedSound('ringtone');
+        }
+
+        // --- 2. LOCAL MEDIA SETUP & CAMERA SWITCHING ---
+        async function setupLocalMedia() {
+            try {
+                if (localStream) {
+                    localStream.getTracks().forEach(t => t.stop());
+                }
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: currentFacingMode },
+                    audio: true
+                });
+                document.getElementById('local-video').srcObject = localStream;
+                document.getElementById('local-placeholder').classList.add('hidden');
+                setupAudioVolumeAnalyzer(localStream, 'local-user-card');
+            } catch (err) {
+                console.warn('Camera/Mic access error:', err);
+                document.getElementById('local-placeholder').classList.remove('hidden');
+            }
+        }
+
+        async function switchCameraFacing() {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            await setupLocalMedia();
+            
+            // Replace tracks in active calls
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                Object.values(activeCalls).forEach(call => {
+                    const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender) sender.replaceTrack(videoTrack);
+                });
+            }
+        }
+
+        // Active Speaker Audio Visualizer Threshold Indicator
+        function setupAudioVolumeAnalyzer(stream, cardId) {
+            try {
+                if (!audioCtx) initAudioContext();
+                const src = audioCtx.createMediaStreamSource(stream);
+                const analyzer = audioCtx.createAnalyser();
+                analyzer.fftSize = 256;
+                src.connect(analyzer);
+
+                const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+                const checkVolume = () => {
+                    analyzer.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                    let average = sum / dataArray.length;
+                    
+                    const card = document.getElementById(cardId);
+                    if (card) {
+                        if (average > 25) {
+                            card.classList.add('speaking-border');
+                        } else {
+                            card.classList.remove('speaking-border');
+                        }
+                    }
+                    requestAnimationFrame(checkVolume);
+                };
+                checkVolume();
+            } catch (e) {
+                console.warn('Audio analyzer error:', e);
+            }
+        }
+
+        // --- 3. PEERJS WEBRTC CONNECTION & CALL LOGIC ---
+        function initPeerConnection() {
+            updateStatus('connecting');
+
+            myPeerId = 'wasla-' + Math.random().toString(36).substring(2, 9);
+            document.getElementById('display-my-id').innerText = myPeerId;
+
+            myPeer = new Peer(myPeerId, { debug: 1 });
+
+            myPeer.on('open', (id) => {
+                updateStatus('connected');
+                discoverMeshNetwork();
+            });
+
+            myPeer.on('connection', (conn) => setupDataConnection(conn));
+
+            myPeer.on('call', (call) => {
+                playSynthesizedSound('ringtone');
+                call.answer(localStream);
+                setupMediaCall(call);
+            });
+
+            myPeer.on('error', (err) => {
+                console.error('PeerJS error:', err);
+                updateStatus('reconnecting');
+            });
+        }
+
+        function discoverMeshNetwork() {
+            const masterConn = myPeer.connect(GLOBAL_ROOM_ID);
+            masterConn.on('open', () => setupDataConnection(masterConn));
+
+            if (!myPeer.destroyed && myPeerId !== GLOBAL_ROOM_ID) {
+                const anchorPeer = new Peer(GLOBAL_ROOM_ID);
+                anchorPeer.on('connection', (conn) => setupDataConnection(conn));
+                anchorPeer.on('call', (call) => {
+                    call.answer(localStream);
+                    setupMediaCall(call);
+                });
+            }
+        }
+
+        function setupDataConnection(conn) {
+            const peerId = conn.peer;
+            activeConnections[peerId] = conn;
+
+            conn.on('open', () => {
+                const peerList = Object.keys(activeConnections);
+                conn.send({ type: 'PEER_DISCOVERY', peers: [myPeerId, ...peerList] });
+                playSynthesizedSound('join');
+                updateUserListUI();
+            });
+
+            conn.on('data', (data) => {
+                if (data.type === 'CHAT') {
+                    renderChatMessage(data.sender, data.text, false);
+                    renderOverlayChat(data.sender, data.text);
+                    playSynthesizedSound('chat');
+                } else if (data.type === 'PEER_DISCOVERY') {
+                    data.peers.forEach(id => {
+                        if (id !== myPeerId && !activeConnections[id]) {
+                            connectDataPeer(id);
+                        }
+                    });
+                }
+            });
+
+            conn.on('close', () => removePeer(peerId));
+        }
+
+        function connectDataPeer(targetId) {
+            if (activeConnections[targetId] || targetId === myPeerId) return;
+            const conn = myPeer.connect(targetId);
+            setupDataConnection(conn);
+        }
+
+        function callSinglePeer(targetId) {
+            if (!localStream || targetId === myPeerId) return;
+            const call = myPeer.call(targetId, localStream);
+            setupMediaCall(call);
+        }
+
+        function callAllPeers() {
+            Object.keys(activeConnections).forEach(peerId => {
+                callSinglePeer(peerId);
+            });
+        }
+
+        function connectAndCallPeer() {
+            const input = document.getElementById('input-target-id');
+            const targetId = input.value.trim();
+            if (!targetId) return;
+
+            connectDataPeer(targetId);
+            setTimeout(() => callSinglePeer(targetId), 500);
+            toggleConnectModal();
+            input.value = '';
+        }
+
+        function setupMediaCall(call) {
+            const peerId = call.peer;
+            activeCalls[peerId] = call;
+
+            call.on('stream', (remoteStream) => {
+                activeRemoteStreams[peerId] = remoteStream;
+                renderRemoteVideo(peerId, remoteStream);
+                setupAudioVolumeAnalyzer(remoteStream, `video-card-${peerId}`);
+            });
+
+            call.on('close', () => removePeerVideo(peerId));
+        }
+
+        // --- 4. VIDEO GRID RENDERER ---
+        function renderRemoteVideo(peerId, stream) {
+            let videoCard = document.getElementById(`video-card-${peerId}`);
+            if (!videoCard) {
+                videoCard = document.createElement('div');
+                videoCard.id = `video-card-${peerId}`;
+                videoCard.className = 'relative bg-slate-900/90 rounded-2xl overflow-hidden border border-slate-800 shadow-xl flex flex-col items-center justify-center min-h-[220px] transition-all duration-300';
+
+                videoCard.innerHTML = `
+                    <video id="video-${peerId}" autoplay playsinline class="w-full h-full object-cover rounded-2xl"></video>
+                    <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
+                        <span class="bg-slate-950/80 backdrop-blur-md text-slate-200 text-xs px-2.5 py-1 rounded-lg border border-slate-700/50 flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-user text-indigo-400"></i>
+                            <span>${peerId.replace('wasla-', 'مستخدم ')}</span>
+                        </span>
+                        <button onclick="callSinglePeer('${peerId}')" class="pointer-events-auto px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs flex items-center gap-1 border border-emerald-500 shadow-sm">
+                            <i class="fa-solid fa-phone text-[10px]"></i>
+                            <span>اتصال</span>
+                        </button>
+                    </div>
+                `;
+                document.getElementById('video-grid').appendChild(videoCard);
+            }
+
+            const videoElem = document.getElementById(`video-${peerId}`);
+            if (videoElem) videoElem.srcObject = stream;
+        }
+
+        function removePeerVideo(peerId) {
+            const card = document.getElementById(`video-card-${peerId}`);
+            if (card) card.remove();
+        }
+
+        function removePeer(peerId) {
+            if (activeConnections[peerId]) {
+                activeConnections[peerId].close();
+                delete activeConnections[peerId];
+            }
+            if (activeCalls[peerId]) {
+                activeCalls[peerId].close();
+                delete activeCalls[peerId];
+            }
+            delete activeRemoteStreams[peerId];
+            removePeerVideo(peerId);
+            updateUserListUI();
+        }
+
+        // --- 5. REAL-TIME CHAT & FLOATING OVERLAYS ---
+        function handleSendChat(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            Object.values(activeConnections).forEach(conn => {
+                if (conn.open) conn.send({ type: 'CHAT', sender: myPeerId, text: message });
+            });
+
+            renderChatMessage(translations[currentLang].you, message, true);
+            renderOverlayChat(translations[currentLang].you, message);
+            input.value = '';
+        }
+
+        function renderChatMessage(sender, text, isSelf) {
+            const container = document.getElementById('chat-messages');
+            const bubble = document.createElement('div');
+            bubble.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} space-y-1`;
+
+            bubble.innerHTML = `
+                <span class="text-[10px] text-slate-500 px-1">${sender}</span>
+                <div class="max-w-[85%] px-3.5 py-2 rounded-2xl text-xs md:text-sm ${
+                    isSelf 
+                        ? 'bg-brand-600 text-white rounded-br-none shadow-md' 
+                        : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700/60'
+                }">
+                    ${escapeHTML(text)}
+                </div>
+            `;
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function renderOverlayChat(sender, text) {
+            const overlay = document.getElementById('overlay-chat');
+            const toast = document.createElement('div');
+            toast.className = 'bg-slate-900/90 border border-slate-700/80 text-slate-100 backdrop-blur-md px-3.5 py-2 rounded-xl shadow-2xl text-xs pointer-events-auto flex flex-col gap-0.5 transition-all duration-300';
+            toast.innerHTML = `
+                <span class="text-[10px] font-bold text-brand-400">${escapeHTML(sender)}</span>
+                <span>${escapeHTML(text)}</span>
+            `;
+            overlay.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+        }
+
+        // --- 6. MEDIA CONTROLS & UTILITIES ---
+        function toggleMic() {
+            if (!localStream) return;
+            isMicMuted = !isMicMuted;
+            localStream.getAudioTracks().forEach(t => t.enabled = !isMicMuted);
+
+            const btn = document.getElementById('btn-toggle-mic');
+            const icon = document.getElementById('icon-mic');
+            const statusIcon = document.getElementById('icon-mic-status');
+
+            if (isMicMuted) {
+                btn.classList.replace('bg-slate-800', 'bg-red-600/20');
+                btn.classList.add('text-red-400', 'border-red-500/40');
+                icon.className = 'fa-solid fa-microphone-slash text-lg';
+                statusIcon.className = 'w-7 h-7 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center text-xs backdrop-blur-md';
+                statusIcon.innerHTML = '<i class="fa-solid fa-microphone-slash"></i>';
+            } else {
+                btn.classList.replace('bg-red-600/20', 'bg-slate-800');
+                btn.classList.remove('text-red-400', 'border-red-500/40');
+                icon.className = 'fa-solid fa-microphone text-lg';
+                statusIcon.className = 'w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs backdrop-blur-md';
+                statusIcon.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+            }
+        }
+
+        function toggleCamera() {
+            if (!localStream) return;
+            isCamOff = !isCamOff;
+            localStream.getVideoTracks().forEach(t => t.enabled = !isCamOff);
+
+            const btn = document.getElementById('btn-toggle-cam');
+            const icon = document.getElementById('icon-cam');
+            const placeholder = document.getElementById('local-placeholder');
+
+            if (isCamOff) {
+                btn.classList.replace('bg-slate-800', 'bg-red-600/20');
+                btn.classList.add('text-red-400', 'border-red-500/40');
+                icon.className = 'fa-solid fa-video-slash text-lg';
+                placeholder.classList.remove('hidden');
+            } else {
+                btn.classList.replace('bg-red-600/20', 'bg-slate-800');
+                btn.classList.remove('text-red-400', 'border-red-500/40');
+                icon.className = 'fa-solid fa-video text-lg';
+                placeholder.classList.add('hidden');
+            }
+        }
+
+        async function toggleScreenShare() {
+            try {
+                if (!screenStream) {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const screenTrack = screenStream.getVideoTracks()[0];
+
+                    Object.values(activeCalls).forEach(call => {
+                        const sender = call.peerConnection.getSenders().find(s => s.track.kind === 'video');
+                        if (sender) sender.replaceTrack(screenTrack);
+                    });
+
+                    document.getElementById('local-video').srcObject = screenStream;
+                    document.getElementById('icon-screen').className = 'fa-solid fa-desktop text-brand-400 animate-pulse';
+                    screenTrack.onended = () => stopScreenShare();
+                } else {
+                    stopScreenShare();
+                }
+            } catch (err) {
+                console.warn('Screen share error:', err);
+            }
+        }
+
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(t => t.stop());
+                screenStream = null;
+            }
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                Object.values(activeCalls).forEach(call => {
+                    const sender = call.peerConnection.getSenders().find(s => s.track.kind === 'video');
+                    if (sender) sender.replaceTrack(videoTrack);
+                });
+                document.getElementById('local-video').srcObject = localStream;
+            }
+            document.getElementById('icon-screen').className = 'fa-solid fa-desktop text-lg';
+        }
+
+        function copyMyPeerId() {
+            if (!myPeerId) return;
+            const temp = document.createElement('textarea');
+            temp.value = myPeerId;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            
+            renderOverlayChat(translations[currentLang].appTitle, 'تم نسخ المعرّف الخاص بك الحافظة!');
+        }
+
+        function manualReconnect() {
+            if (myPeer) myPeer.destroy();
+            initPeerConnection();
+        }
+
+        function toggleChatSidebar() {
+            document.getElementById('chat-sidebar').classList.toggle('translate-x-full');
+        }
+
+        function toggleConnectModal() {
+            document.getElementById('connect-modal').classList.toggle('hidden');
+        }
+
+        function updateUserListUI() {
+            const peerIds = Object.keys(activeConnections);
+            const count = peerIds.length + 1;
+            const label = currentLang === 'ar' ? `${count} متصل` : `${count} Online`;
+            document.getElementById('user-count').innerText = label;
+
+            const listContainer = document.getElementById('active-peers-list');
+            if (peerIds.length === 0) {
+                listContainer.innerHTML = `<div class="text-xs text-slate-500 italic" id="txt-no-peers">${translations[currentLang].noPeers}</div>`;
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            peerIds.forEach(id => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between p-2 rounded-xl bg-slate-950 border border-slate-800 text-xs';
+                row.innerHTML = `
+                    <span class="font-mono text-slate-300">${id}</span>
+                    <button onclick="callSinglePeer('${id}')" class="px-2.5 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium flex items-center gap-1">
+                        <i class="fa-solid fa-phone text-[10px]"></i>
+                        <span>اتصال</span>
+                    </button>
+                `;
+                listContainer.appendChild(row);
+            });
+        }
+
+        function updateStatus(state) {
+            const indicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const dict = translations[currentLang];
+
+            if (state === 'connected') {
+                indicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+                statusText.innerText = dict.connected;
+            } else if (state === 'connecting') {
+                indicator.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping';
+                statusText.innerText = dict.connecting;
+            } else {
+                indicator.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+                statusText.innerText = dict.reconnecting;
+            }
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ar' ? 'en' : 'ar';
+            document.documentElement.lang = currentLang;
+            document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+
+            const dict = translations[currentLang];
+            document.getElementById('txt-app-title').innerText = dict.appTitle;
+            document.getElementById('txt-live-tag').innerText = dict.liveTag;
+            document.getElementById('txt-subtitle').innerText = dict.subtitle;
+            document.getElementById('txt-you').innerText = dict.you;
+            document.getElementById('txt-cam-off').innerText = dict.camOff;
+            document.getElementById('txt-chat-header').innerText = dict.chatHeader;
+            document.getElementById('txt-welcome-msg').innerText = dict.welcomeMsg;
+            document.getElementById('chat-input').placeholder = dict.inputPlaceholder;
+            document.getElementById('txt-call-all').innerText = dict.callAll;
+            document.getElementById('txt-direct-btn').innerText = dict.directBtn;
+            document.getElementById('txt-modal-title').innerText = dict.modalTitle;
+            document.getElementById('txt-modal-desc').innerText = dict.modalDesc;
+            document.getElementById('label-peer-id').innerText = dict.labelPeerId;
+            document.getElementById('btn-call-target').innerText = dict.callTarget;
+            document.getElementById('txt-active-users-title').innerText = dict.activeUsersTitle;
+            document.getElementById('txt-my-id-label').innerText = dict.myIdLabel;
+
+            document.getElementById('tip-mic').innerText = dict.tipMic;
+            document.getElementById('tip-cam').innerText = dict.tipCam;
+            document.getElementById('tip-screen').innerText = dict.tipScreen;
+            document.getElementById('tip-bell').innerText = dict.tipBell;
+            document.getElementById('tip-reconnect').innerText = dict.tipReconnect;
+
+            updateUserListUI();
+            updateStatus('connected');
+        }
+    </script>
 </body>
 </html>
